@@ -1,0 +1,519 @@
+{% extends "common/header.html" %}
+{% block content %}
+<style>
+    .dataTables_wrapper .dataTables_filter {display:none;}
+    .pagination {display:none;}
+    .dataTables_info {display:none;}
+    .ms-select {width: 10%;}
+    .ms-select-all {width: 10%;}
+    input {border:none; width:100%; color:#858796;}
+</style>
+
+<div class="card shadow mb-4">
+    <div class="card-body">
+        <div class="pknu-table-responsive">
+            <div class="no-arrow no-arrow-btn" style="position:absolute; right:1.2%; z-index:100;">
+                <a href="#" class="btn btn-info btn-icon-split modal-upload-btn">
+                    <span class="icon text-white-50">
+                        <i class="fas fa-check"></i>
+                    </span>
+                    <span class="text">주문개별업로드</span>
+                </a>
+                <a href="#" class="btn btn-success btn-success-csv btn-icon-split upload-btn">
+                    <span class="icon text-white-50">
+                        <i class="fas fa-check"></i>
+                    </span>
+                    <span class="text">.csv 업로드</span>
+                </a>
+            </div>
+            <form id="orderForm" method="POST" action="{% url 'order:order.csvCreate' %}">
+                <table class="table table-bordered" id="dataTable" width="100%" cellspacing="0">
+                    <thead>
+                        <tr>
+                            <th>번호</th>
+                            <th>고객명</th>
+                            <th>주문일자</th>
+                            <th>요청기한</th>
+                            <th>제품명</th>
+                            <th>요구량(yd)</th>
+                            <th>연락처</th>
+                            <th>이메일</th>
+                            <th style="text-align:center;">관리</th>
+                        </tr>
+                    </thead>
+                    <tbody class="tbody-data">
+
+                    </tbody>
+                </table>
+                <div class="dropdown dropdown-btn no-arrow" style="text-align:right;">
+                    <button type="submit" value="OrderList" class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm">
+                        <i class="fas fa-upload fa-sm text-white-50"></i> 수주문서업로드
+                    </button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+
+<!-- OrderUploadModal -->
+<div class="modal fade" id="uploadModal" role="dialog" aria-labelledby="uploadModal" aria-hidden="true" data-backdrop="static">
+    <div class="modal-dialog modal-dialog2" role="document">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h4 class="modal-title" id="exampleModalLabel">주문 등록</h4>
+                <button class="close" type="button" data-bs-dismiss="modal" aria-label="Close">
+                        <span aria-hidden="true">×</span>
+                    </button>
+            </div>
+            <div class="modal-body pknu-modal-body-overflow">
+                <div class="row pknu-modal-row">
+                    <div class="col-md-3 pknu-modal-label"><label class="pt-2" style="font-size:0.95rem;">고객명</label></div>
+                    <div class="col-lg-7">
+                        <input class="form-control text-center" type="text" name="custname" id="custname" />
+                    </div>
+                </div>
+                <div class="row pknu-modal-row">
+                    <div class="col-md-3 pknu-modal-label"><label for="orddate" class="pt-2">주문일자</label></div>
+                    <div class="col-lg-7">
+                        <input class="form-control text-center" type="text" name="orddate" id="orddate" readonly="readonly" />
+                    </div>
+                </div>
+                <div class="row pknu-modal-row">
+                    <div class="col-md-3 pknu-modal-label"><label for="prodname_old" class="pt-2" style="font-size:0.95rem;">제품명</label></div>
+                    <div class="col-lg-7" id="prodname_old">
+                        <!-- <input class="form-control text-center" type="text" name="dateFrom"/> -->
+                    </div>
+                </div>
+                <div class="row pknu-modal-row">
+                    <div class="col-md-3 pknu-modal-label"><label class="pt-2" style="font-size:0.95rem;">총 희망 가격</label></div>
+                    <div class="col-lg-7">
+                        <input class="form-control text-center" type="text" name="cost" id="cost" />
+                    </div>
+                </div>
+                <div class="row pknu-modal-row">
+                    <div class="col-md-3 pknu-modal-label"><label for="phonenum" class="pt-2" style="font-size:0.95rem;">연락처</label></div>
+                    <div class="col-lg-7">
+                        <input class="form-control text-center" type="text" name="dateFrom" id="phonenum" />
+                    </div>
+                </div>
+                <div class="row pknu-modal-row">
+                    <div class="col-md-3 pknu-modal-label"><label for="email" class="pt-2" style="font-size:0.95rem;">이메일</label></div>
+                    <div class="col-lg-7">
+                        <input class="form-control text-center" type="text" name="dateFrom" id="email" />
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer" id="modal-footer">
+                <button type="button" class="d-none d-sm-inline-block btn btn-sm btn-danger shadow-sm" data-bs-dismiss="modal">
+                    <i class="far fa-window-close fa-sm text-white-50"></i> 취소
+                </button>
+                <a class="d-none d-sm-inline-block btn btn-sm btn-primary shadow-sm" id="modal-upload">
+                    <i class="fas fa-upload fa-sm text-white-50"></i> 주문업로드
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+<!-- OrderUploadModal -->
+
+<!-- .csvModal-->
+<div class="modal fade" id="excelUploadModal" tabindex="-1" role="dialog" aria-labelledby="exampleModalLabel" style="padding-right: 17px;" aria-modal="true">
+    <div class="modal-dialog" role="document">
+        <div class="modal-content">
+            <!--modal header-->
+            <div class="modal-header">
+                <h5 class="modal-title" id="">수주 문서 업로드</h5>
+                <button class="close" type="button" data-bs-dismiss="modal" aria-label="Close">
+                    <span aria-hidden="true">×</span>
+                </button>
+            </div>
+            <!--modal header-->
+            <!--modal body-->
+            <div class="modal-body">
+                <div class="modal-body">
+                    <div class="md-form mb-3">
+                        <div class="col-auto">
+                            <form action="#" class="dropzone orderdropzone" name="orderDocDropzone" id="orderDocDropzone" enctype="multipart/form-data">
+                                <div class="fallback">
+                                    <input type="file" name="file" />
+                                </div>
+                            </form>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <!--modal body-->
+            <!--modal footer-->
+            <div class="modal-footer">
+                <a href="{% url 'order:order.order_csv_download_blank' %}" class="btn btn-info btn-icon-split upload-btn">
+                    <span class="icon text-white-50">
+                        <i class="fas fa-check"></i>
+                    </span>
+                    <span class="text">수주문서업로드양식다운로드</span>
+                </a>
+                <button class="btn btn-secondary" type="button" data-bs-dismiss="modal">취소</button>
+                <button type="button" class="btn btn-primary" id="fileReadBtn">업로드</button>
+            </div>
+            <!--modal footer-->
+        </div>
+    </div>
+</div>
+<!-- .csvModal-->
+
+
+
+<!--게시판 관련 js-->
+<!-- Page level plugins -->
+<script src="/static/vendor/datatables/jquery.dataTables.min.js"></script>
+<script src="/static/vendor/datatables/dataTables.bootstrap4.min.js"></script>
+<script src="/static/js/dropzone/dropzone.min.js"></script>
+<!-- Page level custom scripts -->
+<script src="/static/js/demo/datatables-demo.js"></script>
+
+<script>
+    Dropzone.autoDiscover = false; // dropzone 초기화
+    function hasExtension(fileName, exts) {
+        return (new RegExp('(' + exts.join('|').replace(/\./g, '\\.') + ')$')).test(fileName);
+    }
+    var fileName = "";
+    $(function(){
+
+    const today = moment();
+        // 검색 날짜 init
+        flatpickr("#orddate, #estdate", {
+            locale: Flatpickr.l10ns.ko,
+            enableTime: false,
+            dateFormat: "Y-m-d",
+            disableMobile: true,
+            defaultDate: [today.format('YYYY-MM-DD')]
+        });
+
+        $(".dropdown-btn").css('display', 'none');
+
+        // csv 업로드
+        var _url = "{% url 'order:order.order_read_csv' %}";
+        var formData = new FormData();
+        //dropzone에 파일등록
+        var dropzone = new Dropzone("#orderDocDropzone", {
+            url: "{% url 'company:upload' %}",
+            addRemoveLinks: true,
+            maxFiles: 1,
+            init: function(e) {
+                // 파일 업로드 성공 시
+                this.on('success', function(file) {
+                    formData.append("file", dropzone.getAcceptedFiles()[0]);
+                    fileName = file.name;
+                    //확장자 체크(작업장별 다름)
+                    if(!hasExtension(fileName, ['csv'])){
+                        Swal.fire({
+                          icon: 'error',
+                          title: '파일 형식 오류',
+                          text: '.csv 파일을 업로드 해 주세요.',
+                        });
+                        return false;
+                    }
+                });
+
+            }
+        });
+
+        // 수주 개별 업로드 버튼
+        $('.modal-upload-btn').on('click', function(){
+            $('#uploadModal').modal({backdrop: 'static', keyboard: false})
+            $("#uploadModal").modal("show");
+        });
+        // .csv 업로드 버튼
+        $('.upload-btn').on('click', function(){
+            $('#excelUploadModal').modal({backdrop: 'static', keyboard: false})
+            $("#excelUploadModal").modal("show");
+        });
+
+        // 제품명 select box 그리기
+        prodDraw();
+
+        // 제품명 조회
+        var result_data;
+        function prodSearch() {
+            $.ajax({
+                url: "{% url 'company:company.product_search' %}",
+                method: 'GET',
+                dataType: 'json',
+                async: false,
+                contentType: 'application/json',
+                processData: false,
+                success: function(result) {
+                    result_data = result;
+                }
+
+            });
+            return result_data;
+        }
+        // 제품명 select box 그리기
+        function prodDraw() {
+            $('#prodname_old').html('');
+            var result = prodSearch();
+            if (result.length > 1) {
+                var innerHTML = '<select class="form-control" name="select" multiple="multiple" id="selectProduct">';
+                for (var i = 0; i < result.length; i++) {
+                    if (typeof result[i] !== 'undefined') {
+                        innerHTML += '<option class="ms-select ' + result[i].prod_id + '" value="' + result[i].prod_name + '">' + result[i].prod_name + ' </option>';
+                    }
+                }
+            } else {
+                var innerHTML = '<input type="text" class="form-control" placeholder="해당일에 주문데이터가 없습니다." value="" readonly="readonly" />';
+            }
+            $('#prodname_old').html(innerHTML);
+            $("#selectProduct").multipleSelect({
+                filter: true
+            });
+            return;
+        }
+
+        function clickBodyEvent(event) {
+            var target = event.target;
+            if (target == event.currentTarget.querySelector(".modal-body")) {
+                var selected_ord = $('#prodname_old').find(':selected');
+                if (selected_ord.length > 1) {
+                    $('#orderSelectDiv').css('overflow', 'scroll');
+                    $('#orderSelectDiv').css('overflow-x', 'hidden');
+                    $('#orderSelectDiv').css('height', '398px');
+                }
+                var innerHTML = '';
+                for (var i = 0; i < selected_ord.length; i++) {
+                    if (typeof selected_ord[i].value != 'undefined') {
+                        innerHTML += '<div class="col-xl-13" id="accordion">'+
+                                    '<div class="accordion accordion-header-bg accordion-bordered" id="accordion">'+
+                                        '<div class="accordion-item">'+
+                                            '<div class="accordion-header rounded-lg product_select" id="collapse-' + i + '" data-bs-toggle="collapse" data-bs-target="#collapse' + i + '" aria-controls="collapse' + i + '"   aria-expanded="true"  role="button">'+
+                                                '<span class="accordion-header-icon"></span>'+
+                                                '<span class="accordion-header-text" id="' + selected_ord[i].value + '">' + selected_ord[i].innerText + '</span>'+
+                                                '<span class="accordion-header-indicator"></span>'+
+                                            '</div>';
+                                            innerHTML += '<div id="collapse' + i + '" class="collapse accordion__body show" aria-labelledby="accord-7One" data-bs-parent="#accordion">';
+                                            /* if(i == 0){
+                                                innerHTML += '<div id="collapse' + i + '" class="collapse accordion__body show" aria-labelledby="accord-7One" data-bs-parent="#accordion">';
+                                            } else {
+                                                innerHTML += '<div id="collapse' + i + '" class="collapse accordion__body" aria-labelledby="accord-7One" data-bs-parent="#accordion">';
+                                            } */
+                                   innerHTML += '<div class="accordion-body-text">'+
+                                                    '<label class="" style="margin-right:2.2rem;">요청기한</label>'+
+                                                    '<input class="col-md-6 form-control text-center estDate" type="text" name="dateFrom"/>'+
+                                                '</div>'+
+                                                '<div class="accordion-body-text">'+
+                                                    '<label class="" style="margin-right:2.2rem;">요구량(yd)</label>'+
+                                                    '<input class="col-md-6 form-control text-center demands" type="text" name="demands"/>'+
+                                                '</div>'+
+                                            '</div>'+
+                                        '</div>'+
+                                    '</div>'+
+                                '</div>';;
+                    }
+                }
+                $('#prodname_old').html(innerHTML);
+                // 검색 날짜 init
+                flatpickr(".estDate", {
+                    locale: Flatpickr.l10ns.ko,
+                    enableTime: false,
+                    dateFormat: "Y-m-d",
+                    disableMobile: true,
+                    defaultDate: [today.format('YYYY-MM-DD')]
+                });
+                $('#prodname_old').attr('id', 'prodname');
+            }
+        }
+
+        $('#prodname_old').on('click', function(event) {
+            var body = document.querySelector("body");
+            body.addEventListener('click', clickBodyEvent);
+
+        });
+
+        /* **********************
+           수주개별업로드 수주문서업로드 버튼 클릭 이벤트
+         ********************** */
+        $("#modal-upload").on("click", function(){
+            var sch_date = $('#orddate').val();
+            var pass = 'yes';
+            var arr = new Array();
+            var demands_arr = new Array();
+            var product_arr = new Array();
+            $('.estDate').each(function(i, elem){
+                arr.push($(this).val());
+            });
+            $('.demands').each(function(i, elem){
+                validation($(this).val());
+                demands_arr.push($(this).val());
+            });
+            $('.accordion-header-text').each(function(i){
+                product_arr.push($('.accordion-header-text')[i].id);
+            });
+            /* **********************
+               마감기한 체크
+             ********************** */
+            for(var i=0; i<arr.length; i++){
+                var exp_date = arr[i];
+                if (exp_date < sch_date || exp_date == sch_date){
+                    pass = 'no';
+                    Swal.fire({
+                      icon: 'error',
+                      title: '마감기한 날짜 조정이 필요합니다.',
+                      showCancelButton: true,
+                      text: '마감기한은 주문일자보다 커야 합니다.'
+                    }).then(function(){
+
+                    });
+                }
+                break;
+            }
+            if (pass == 'yes'){
+                var $request;
+                var obj = new Object();
+                obj.cust_name = $('#custname').val();
+                obj.sch_date = $('#orddate').val();
+                obj.exp_date = arr;
+                obj.demands = demands_arr;
+                obj.prod_name = product_arr;
+                obj.amount = $('#demand').val();
+                obj.contact = $('#phonenum').val();
+                obj.email = $('#email').val();
+                $.ajax({
+                    url: "{% url 'order:order.order_update_modal' %}",
+                    data : JSON.stringify(obj),
+                    type:'json',
+                    contentType: 'application/json',
+                    method: "POST",
+                    beforeSend: function(xhr, opts){
+                        validation($('#custname').val())=='error'?xhr.abort():'';
+                        validation($('#email').val())=='error'?xhr.abort():'';
+                        validation($('#phonenum').val())=='error'?xhr.abort():'';
+                    },
+                    success: function(data){
+                        $(location).attr('href', "{% url 'order:order.order_list_view' %}")
+                    }
+                });
+            }
+        });
+
+        /* **********************
+           유효성 검사
+         ********************** */
+        function validation(check){
+            console.log(check);
+            if(typeof check == 'undefined' || check.length <= 0){
+                Swal.fire({
+                  icon: 'error',
+                  title: '필수 항목을 체크해 주세요.',
+                  showCancelButton: true,
+                  text: '필수 항목을 모두 입력해야 합니다.'
+                }).then(function(){
+
+                });
+                return 'error';
+            } else {
+                return 'success';
+            }
+        }
+
+        $("#fileReadBtn").on("click", function(e){
+            $.ajax({
+                url: _url,
+                method:'POST',
+                contentType: false,
+                processData: false,
+                data: formData,
+                success: function(result){
+                    $(".dropdown-btn").css('display', 'block');
+                    $(".upload-btn").css('display', 'none');
+                    var innerHTML;
+                    var count = 0;
+                    for(var i=0; i<result.length; i++){
+                        count = count + 1;
+                        innerHTML += '<tr>' +
+                            '<td>' + count + '</td>' +
+                            '<td><input name="cust_name" value="' + result[i].cust_name + '"/></td>' +
+                            '<td><input name="sch_date" value="' + result[i].sch_date + '"/></td>' +
+                            '<td><input name="exp_date" value="' + result[i].exp_date + '"/></td>' +
+                            '<td><input name="prod_name" value="' + result[i].prod_name + '"/></td>' +
+                            '<td><input name="amount" value="' + result[i].amount + '"/></td>' +
+                            '<td><input name="contact" value="' + result[i].contact + '"/></td>' +
+                            '<td><input name="email" value="' + result[i].email + '"/></td>' +
+                            '<td style="text-align:center;">' +
+                                '<a href="#" id="delete_'+ count +'" onclick="deletedOrder(\'' + result[i].cust_name + '\',\'' + result[i].amount + '\')"><i class="fas fa-trash-alt"></i></a>' +
+                            '</td>' +
+                        '</tr>';
+                    }
+                    $('.tbody-data').html(innerHTML);
+                    if(result.message == 'error'){
+                        Swal.fire({
+                          icon: 'error',
+                          title: '파일 형식 오류',
+                          text: '데이터 항목을 형식에 맞춘 후 업로드 해 주세요.',
+                          footer: '<a href="">형식 다운로드</a>'
+                        });
+                        return false;
+                    } else {
+                        $('#excelUploadModal').modal('hide');
+                    }
+                },
+                error: function(error){
+                    console.log(error);
+                    // $('#css-loader').removeClass("is-active");
+                }
+            });
+        });
+        $('.btn-success-csv').on('click', function(){
+            $('#excelUploadModal').modal('show');
+        });
+        $('#form').attr('action',"{% url 'order:order.csvCreate' %}").submit();
+    });
+
+    function deletedOrder(name, amount){
+        var selectdata = new Object();
+        selectdata.name = name;
+        selectdata.amount = amount;
+        selectdata.fileName = fileName;
+        Swal.fire({
+          icon: 'error',
+          title: '삭제하시겠습니까?',
+          showCancelButton: true,
+          text: ''
+        }).then(function(){
+            $.ajax({
+                url: "{% url 'order:order.order_delete_read_csv' %}",
+                data : JSON.stringify(selectdata),
+                type:'json',
+                contentType: 'application/json',
+                method: "POST",
+                success: function(data){
+                    $('.tbody-data').html('');
+                    $(".dropdown-btn").css('display', 'block');
+                    var innerHTML;
+                    var count = 0;
+                    for(var i=0; i<data.length; i++){
+                        count = count + 1;
+                        innerHTML += '<tr>' +
+                            '<td>' + count + '</td>' +
+                            '<td><input name="cust_name" value="' + data[i].cust_name + '"/></td>' +
+                            '<td><input name="sch_date" value="' + data[i].sch_date + '"/></td>' +
+                            '<td><input name="exp_date" value="' + data[i].exp_date + '"/></td>' +
+                            '<td><input name="prod_name" value="' + data[i].prod_name + '"/></td>' +
+                            '<td><input name="amount" value="' + data[i].amount + '"/></td>' +
+                            '<td><input name="contact" value="' + data[i].contact + '"/></td>' +
+                            '<td><input name="email" value="' + data[i].email + '"/></td>' +
+                            '<td style="text-align:center;">' +
+                                '<a href="#" id="delete_'+ count +'" onclick="deletedOrder(\'' + data[i].cust_name + '\',\'' + data[i].amount + '\')"><i class="fas fa-trash-alt"></i></a>' +
+                            '</td>' +
+                        '</tr>';
+                    }
+                    $('.tbody-data').html(innerHTML);
+                },
+                error: function(error){
+                    console.log(error)
+                }
+            });
+        });
+        return false;
+    }
+</script>
+{% endblock %}
